@@ -46,7 +46,6 @@
           options.signalingKey = signalingKey;
         }
         options.video.direction = 'recvonly';
-        options.audio.direction = 'recvonly';
         let conn;
         const disconnect = () => {
           if (conn) {
@@ -83,7 +82,7 @@
           conn3.on('addstream', (e) => {
             document.querySelector('#remote-video3').srcObject = e.stream;
           });
-         await conn.connect(null);
+         await conn.connect(mediaStream);
          await conn1.connect(null);
          await conn2.connect(null);
          await conn3.connect(null);
