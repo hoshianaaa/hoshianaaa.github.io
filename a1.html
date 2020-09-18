@@ -111,9 +111,6 @@
           }
         };
 
-        document.querySelector("#roomIdInput").value = roomId;
-        document.querySelector("#clientIdInput").value = options.clientId;
-
 	//keyボード入力でA1を操作
 	window.addEventListener('keydown', function(event) {
 
@@ -145,7 +142,8 @@
 			console.log("rotate right");
 		}
 	});
-
+        document.querySelector("#roomIdInput").value = roomId;
+        document.querySelector("#clientIdInput").value = options.clientId;
       </script>
   </body>
 </html>
