@@ -23,17 +23,13 @@
         <button onclick="disconnect();">切断</button>
       </div>
 
-      <div style="float:left;">
+      <div style="float:center;">
+	<p>
         <video id="remote-video" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
-      </div>
-      <div style="float:left;">
-        <video id="remote-video1" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
-      </div>
-      <div style="float:left;">
-        <video id="remote-video2" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
-      </div>
-      <div style="float:left;">
-        <video id="remote-video3" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
+	</P>
+        <video id="remote-video1" autoplay playsinline controls style="width: 300px; height: 200px; border: 1px solid black;"></video>
+        <video id="remote-video2" autoplay playsinline controls style="width: 300px; height: 200px; border: 1px solid black;"></video>
+        <video id="remote-video3" autoplay playsinline controls style="width: 300px; height: 200px; border: 1px solid black;"></video>
       </div>
 
       <script src="https://cdn.jsdelivr.net/npm/@open-ayame/ayame-web-sdk@2020.2.1/dist/ayame.js"></script>
@@ -46,6 +42,7 @@
           options.signalingKey = signalingKey;
         }
         options.video.direction = 'recvonly';
+        options.audio.direction = 'recvonly';
         let conn;
         const disconnect = () => {
           if (conn) {
@@ -82,7 +79,7 @@
           conn3.on('addstream', (e) => {
             document.querySelector('#remote-video3').srcObject = e.stream;
           });
-         await conn.connect(mediaStream);
+         await conn.connect(null);
          await conn1.connect(null);
          await conn2.connect(null);
          await conn3.connect(null);
