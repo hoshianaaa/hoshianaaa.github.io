@@ -46,7 +46,7 @@
         const startConn = async () => {
           options.video.codec = videoCodec;
           conn = Ayame.connection(signalingUrl, roomId, options, true);
-          const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true})
+          const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false})
           conn.on('open', async (e) => {
 	    console.log(dataChannel);
             dataChannel = await conn.createDataChannel(label);
@@ -60,7 +60,7 @@
           conn.on('addstream', (e) => {
             document.querySelector('#remote-video').srcObject = e.stream;
           });
-          await conn.connect(mediaStream);
+          await conn.connect(null);
         };
         const sendDataL = () => {
           const data = 'a';
@@ -114,17 +114,38 @@
         document.querySelector("#roomIdInput").value = roomId;
         document.querySelector("#clientIdInput").value = options.clientId;
 
+	//keyボード入力でA1を操作
+	window.addEventListener('keydown', function(event) {
 
-	document.addEventListener("keydown", KeyDownFunc);
-	document.addEventListener("keyup", KeyUpFunc);
+		console.log(event.keyCode);
+		//e 69  d 68  f 70  s 83  j 74  l 76
+ 
+		if (event.keyCode == 69){
+			sendDataF();
+			console.log("forward");
+		}
+		if (event.keyCode == 83){
+			sendDataL();
+			console.log("left");
+		}
+		if (event.keyCode == 68){
+			sendDataB();
+			console.log("back");
+		}
+		if (event.keyCode == 70){
+			sendDataR();
+			console.log("right");
+		}
+		if (event.keyCode == 74){
+			sendDataRL();
+			console.log("rotate left");
+		}
+		if (event.keyCode == 76){
+			sendDataRR();
+			console.log("rotate right");
+		}
+	});
 
-	function KeyDownFunc(e){
-	  console.log("Keydown");
-	}
-
-	function KeyUpFunc(e){
-	  console.log("Keyup");
-	}
       </script>
   </body>
 </html>
