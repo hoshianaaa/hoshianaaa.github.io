@@ -12,12 +12,15 @@
         <p>Robot ID
         <input id="roomIdInput" type="text" value=""></input>
         </p>
-        <button onclick="sendDataL();">left</button>
-        <button onclick="sendDataF();">forward</button>
-        <button onclick="sendDataR();">right</button>
-        <button onclick="sendDataB();">back</button>
-        <button onclick="sendDataRR();">rotate right</button>
-        <button onclick="sendDataRL();">rotate left</button>
+        <p>クライアントID
+        <input id="clientIdInput" disabled type="text" value=""></input>
+        </p>
+        <button onclick="sendDataL();">left(s)</button>
+        <button onclick="sendDataF();">forward(e)</button>
+        <button onclick="sendDataR();">right(f)</button>
+        <button onclick="sendDataB();">back(d)</button>
+        <button onclick="sendDataRR();">rotate right(l)</button>
+        <button onclick="sendDataRL();">rotate left(j)</button>
 	</p>
         <button onclick="startConn();">接続</button>
         <button onclick="disconnect();">切断</button>
@@ -132,6 +135,38 @@
             dataChannel.send(data);
           }
         };
+
+	//keyボード入力でA1を操作
+	window.addEventListener('keydown', function(event) {
+
+		console.log(event.keyCode);
+		//e 69  d 68  f 70  s 83  j 74  l 76
+ 
+		if (event.keyCode == 69){
+			sendDataF();
+			console.log("forward");
+		}
+		if (event.keyCode == 83){
+			sendDataL();
+			console.log("left");
+		}
+		if (event.keyCode == 68){
+			sendDataB();
+			console.log("back");
+		}
+		if (event.keyCode == 70){
+			sendDataR();
+			console.log("right");
+		}
+		if (event.keyCode == 74){
+			sendDataRL();
+			console.log("rotate left");
+		}
+		if (event.keyCode == 76){
+			sendDataRR();
+			console.log("rotate right");
+		}
+	});
 
         document.querySelector("#roomIdInput").value = roomId;
         document.querySelector("#clientIdInput").value = options.clientId;
