@@ -1,0 +1,144 @@
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <title>Ayame RecvOnly Sample</title>
+        <link rel="stylesheet" href="https://cdn.rawgit.com/Chalarangelo/mini.css/v3.0.1/dist/mini-default.min.css">
+    </head>
+    <body>
+      <header class="sticky row">
+        <h4>A1 Remote Control</h4>
+      </header>
+      <div>
+        <p>Robot ID
+        <input id="roomIdInput" type="text" value=""></input>
+        </p>
+        <button onclick="sendDataL();">left</button>
+        <button onclick="sendDataF();">forward</button>
+        <button onclick="sendDataR();">right</button>
+        <button onclick="sendDataB();">back</button>
+        <button onclick="sendDataRR();">rotate right</button>
+        <button onclick="sendDataRL();">rotate left</button>
+	</p>
+        <button onclick="startConn();">接続</button>
+        <button onclick="disconnect();">切断</button>
+      </div>
+
+      <div style="float:left;">
+        <video id="remote-video" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
+      </div>
+      <div style="float:left;">
+        <video id="remote-video1" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
+      </div>
+      <div style="float:left;">
+        <video id="remote-video2" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
+      </div>
+      <div style="float:left;">
+        <video id="remote-video3" autoplay playsinline controls style="width: 400px; height: 300px; border: 1px solid black;"></video>
+      </div>
+
+      <script src="https://cdn.jsdelivr.net/npm/@open-ayame/ayame-web-sdk@2020.2.1/dist/ayame.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/qs/6.7.0/qs.min.js"></script>
+      <script src="./main.js"></script>
+      <script type="text/javascript">
+        const options = Ayame.defaultOptions;
+        options.clientId = clientId ? clientId : options.clientId;
+        if (signalingKey) {
+          options.signalingKey = signalingKey;
+        }
+        options.video.direction = 'recvonly';
+        options.audio.direction = 'recvonly';
+        let conn;
+        const disconnect = () => {
+          if (conn) {
+            conn.disconnect();
+          }
+        }
+        let dataChannel = null;
+        const label = 'dataChannel';
+        const startConn = async () => {
+          options.video.codec = videoCodec;
+          conn = Ayame.connection(signalingUrl, roomId, options, true);
+          conn1 = Ayame.connection(signalingUrl, roomId+"1", options, true);
+          conn2 = Ayame.connection(signalingUrl, roomId+"2", options, true);
+          conn3 = Ayame.connection(signalingUrl, roomId+"3", options, true);
+          conn.on('open', async (e) => {
+	    console.log(dataChannel);
+            dataChannel = await conn.createDataChannel(label);
+          });
+          conn.on('datachannel', (channel) => {
+            if (!dataChannel) {
+              dataChannel = channel;
+            }
+          });
+          conn.on('disconnect', (e) => console.log(e));
+          conn.on('addstream', (e) => {
+            document.querySelector('#remote-video').srcObject = e.stream;
+          });
+          conn1.on('addstream', (e) => {
+            document.querySelector('#remote-video1').srcObject = e.stream;
+          });
+          conn2.on('addstream', (e) => {
+            document.querySelector('#remote-video2').srcObject = e.stream;
+          });
+          conn3.on('addstream', (e) => {
+            document.querySelector('#remote-video3').srcObject = e.stream;
+          });
+         await conn.connect(null);
+         await conn1.connect(null);
+         await conn2.connect(null);
+         await conn3.connect(null);
+        };
+        const sendDataL = () => {
+          const data = 'a';
+	  console.log(data);
+	  console.log(dataChannel);
+          if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(data);
+          }
+        };
+        const sendDataR = () => {
+          const data = 'd';
+	  console.log(data);
+	  console.log(dataChannel);
+          if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(data);
+          }
+        };
+        const sendDataF = () => {
+          const data = 'w';
+	  console.log(data);
+	  console.log(dataChannel);
+          if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(data);
+          }
+        };
+        const sendDataB = () => {
+          const data = 's';
+	  console.log(data);
+	  console.log(dataChannel);
+          if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(data);
+          }
+        };
+        const sendDataRR = () => {
+          const data = 'c';
+	  console.log(data);
+	  console.log(dataChannel);
+          if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(data);
+          }
+        };
+        const sendDataRL = () => {
+          const data = 'x';
+	  console.log(data);
+	  console.log(dataChannel);
+          if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(data);
+          }
+        };
+
+        document.querySelector("#roomIdInput").value = roomId;
+        document.querySelector("#clientIdInput").value = options.clientId;
+      </script>
+  </body>
+</html>
