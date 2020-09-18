@@ -1,4 +1,5 @@
-const signalingUrl = 'ws://192.168.1.200:3000/signaling';
+//const signalingUrl = 'ws://192.168.1.200:3000/signaling';
+const signalingUrl = 'wss://ayame-lite.shiguredo.jp/signaling';
 let roomId = '1';
 let clientId = null;
 let videoCodec = null;
