@@ -46,7 +46,7 @@
         const startConn = async () => {
           options.video.codec = videoCodec;
           conn = Ayame.connection(signalingUrl, roomId, options, true);
-          const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false})
+          const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true})
           conn.on('open', async (e) => {
 	    console.log(dataChannel);
             dataChannel = await conn.createDataChannel(label);
@@ -60,7 +60,7 @@
           conn.on('addstream', (e) => {
             document.querySelector('#remote-video').srcObject = e.stream;
           });
-          await conn.connect(null);
+          await conn.connect(mediaStream);
         };
         const sendDataL = () => {
           const data = 'a';
