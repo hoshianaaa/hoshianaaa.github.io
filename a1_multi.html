@@ -45,7 +45,6 @@
           options.signalingKey = signalingKey;
         }
         options.video.direction = 'recvonly';
-        options.audio.direction = 'recvonly';
         let conn;
         const disconnect = () => {
           if (conn) {
@@ -60,6 +59,7 @@
           conn1 = Ayame.connection(signalingUrl, roomId+"1", options, true);
           conn2 = Ayame.connection(signalingUrl, roomId+"2", options, true);
           conn3 = Ayame.connection(signalingUrl, roomId+"3", options, true);
+          const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false})
           conn.on('open', async (e) => {
 	    console.log(dataChannel);
             dataChannel = await conn.createDataChannel(label);
@@ -82,7 +82,7 @@
           conn3.on('addstream', (e) => {
             document.querySelector('#remote-video3').srcObject = e.stream;
           });
-         await conn.connect(null);
+         await conn.connect(mediaStream);
          await conn1.connect(null);
          await conn2.connect(null);
          await conn3.connect(null);
