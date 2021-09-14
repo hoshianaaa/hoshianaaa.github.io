@@ -278,8 +278,8 @@
 
           startfnc();
 
-	url = '../ptz_camera.html?roomId=' + roomId + '-10';
-	url2 = '../map_camera.html?roomId=' + roomId + '-12';
+	url = '../ptz_camera.html?roomId=' + roomId + '-10' + '&signalingKey=' + signalingKey;
+	url2 = '../map_camera.html?roomId=' + roomId + '-12' + '&signalingKey=' + signalingKey;
 	console.log(url);
 	console.log(url2);
 	var Win1 = window.open(url, 'subWindow', 'width=' + 600 + ',height=' + 400 + '');
