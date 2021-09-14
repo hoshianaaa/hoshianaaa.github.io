@@ -1,17 +1,10 @@
-//const signalingUrl = 'ws://192.168.1.200:3000/signaling';
 const signalingUrl = 'wss://ayame-labo.shiguredo.jp/signaling';
-let roomId = 'hoshina';
+let roomId = 'TS-A1-001';
 let clientId = null;
 let videoCodec = null;
 let audioCodec = null;
 let signalingKey = null;
 
-function onChangeVideoCodec() {
-  videoCodec = document.getElementById("video-codec").value;
-  if (videoCodec == 'none') {
-    videoCodec = null;
-  }
-}
 // query string から roomId, clientId を取得するヘルパー
 function parseQueryString() {
   const qs = window.Qs;
@@ -29,12 +22,4 @@ function parseQueryString() {
   }
 }
 
-
 parseQueryString();
-
-const roomIdInput = document.getElementById("roomIdInput");
-roomIdInput.addEventListener('change', (event) => {
-  console.log(event);
-  roomId = event.target.value;
-});
-
