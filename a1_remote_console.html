@@ -170,7 +170,7 @@
 
         const startConnVoice = async () => {
           if (conn0!=1) {
-                  conn0 = Ayame.connection(signalingUrl, roomId+"-0", options, true); // voice
+                  conn0 = Ayame.connection(signalingUrl, "hoshianaaa@" + roomId+"-0", options, true); // voice
 
                   const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false})
 
@@ -204,11 +204,11 @@
         const label = 'dataChannel';
         const startConn = async () => {
           options.video.codec = videoCodec;
-          conn1 = Ayame.connection(signalingUrl, roomId+"-1", options, true); // A1_controll
-          conn2 = Ayame.connection(signalingUrl, roomId+"-2", options, true); // main_monitor
-          conn3 = Ayame.connection(signalingUrl, roomId+"-3", options, true); // _monitor
-          conn8 = Ayame.connection(signalingUrl, roomId+"-8", options, true); // right_monitor
-          conn9 = Ayame.connection(signalingUrl, roomId+"-9", options, true); // left_monitor
+          conn1 = Ayame.connection(signalingUrl, "hoshianaaa@" + roomId+"-1", options, true); // A1_controll
+          conn2 = Ayame.connection(signalingUrl, "hoshianaaa@" + roomId+"-2", options, true); // main_monitor
+          conn3 = Ayame.connection(signalingUrl, "hoshianaaa@" + roomId+"-3", options, true); // _monitor
+          conn8 = Ayame.connection(signalingUrl, "hoshianaaa@" + roomId+"-8", options, true); // right_monitor
+          conn9 = Ayame.connection(signalingUrl, "hoshianaaa@" + roomId+"-9", options, true); // left_monitor
 
           //A1
           conn1.on('open', async (e) => {
@@ -278,8 +278,8 @@
 
           startfnc();
 
-	url = '../ptz_camera.html?roomId=' + roomId + '-10' + '&signalingKey=' + signalingKey;
-	url2 = '../map_camera.html?roomId=' + roomId + '-12' + '&signalingKey=' + signalingKey;
+	url = '../ptz_camera.html?roomId=' + "hoshianaaa@" + roomId + '-10' + '&signalingKey=' + signalingKey;
+	url2 = '../map_camera.html?roomId=' + "hoshianaaa@" + roomId + '-12' + '&signalingKey=' + signalingKey;
 	console.log(url);
 	console.log(url2);
 	var Win1 = window.open(url, 'subWindow', 'width=' + 600 + ',height=' + 400 + '');
