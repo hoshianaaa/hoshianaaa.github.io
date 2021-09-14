@@ -1,0 +1,1270 @@
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <title>A1 Remote Control</title>
+        <link rel="stylesheet" href="https://cdn.rawgit.com/Chalarangelo/mini.css/v3.0.1/dist/mini-default.min.css">
+    </head>
+    <body>
+        <style>
+
+        .site-box {
+                box-sizing: border-box;
+                margin: 0;
+                color: lightgray;
+                font-size: 10px;
+                background-color: #222222;
+                height: 100%;
+        }
+
+        .top {
+                width: 100%;
+                height: 20%;
+        }
+
+        .left {
+                float: left;
+                width: 80%;
+                height: 80%;
+        }
+
+        .right {
+                float: right;
+                width: 20%;
+                height: 80%;
+        }
+
+        .box {
+                position: relative;
+                border-radius: 4px;/*????*/
+        }
+        .center {
+                text-align:center;
+        }
+
+        </style>
+      	<div class="site-box">
+                <div class="top">
+                        <p>Robot ID
+                        <input id="roomIdInput" type="text" value=""></input>
+                        <button onclick="startConn();"class="box">connect</button>
+                        <button onclick="sendDataSafetyOn();"class="box">safety on</button>
+                        <button onclick="sendDataSafetyOff();"class="box">safety off</button>
+                        <button onclick="sendDataA1Mode();"class="box">a1 mode</button>
+
+			nav/slam
+                        <button onclick="sendDataModeAmcl();"class="box">mode amcl</button>
+                        <button onclick="sendDataModeSlam();"class="box">mode slam</button>
+                        <button onclick="sendDataSlamSaveMap();"class="box">save map</button>
+                        <button onclick="sendDataNavStart();"class="box">navigation start</button>
+                        <button onclick="sendDataNavStartLoop();"class="box">navigation start loop</button>
+                        <button onclick="sendDataNavStop();"class="box">navigation stop</button>
+                        <button onclick="sendDataSwitchInitWp();"class="box">init pos mode</button>
+                        <button onclick="sendDataAddWp();"class="box">init pos set</button>
+
+			wp setting
+                        <button onclick="sendDataWpMode();"class="box">wp mode</button>
+                        <button onclick="sendDataAddWp();"class="box">add waypoint</button>
+                        <button onclick="sendDataDeleteWp();"class="box">delete waypoint</button>
+                        <button onclick="sendDataClearWp();"class="box">clear waypoints</button>
+                        <button onclick="sendDataResetWpPos();"class="box">reset wp pos</button>
+                        <button onclick="sendDataTargetWpUp();"class="box">wp target up</button>
+                        <button onclick="sendDataTargetWpDown();"class="box">wp target down</button>
+                        <button onclick="sendDataSaveWaypoints();"class="box">save waypoints</button>
+                        <button onclick="sendDataLoadWaypoints();"class="box">load waypoints</button>
+
+			wall setting
+                        <button onclick="sendDataWallMode();"class="box">wall mode</button>
+                        <button onclick="sendDataAddWall();"class="box">add wall</button>
+                        <button onclick="sendDataDelWall();"class="box">delete wall</button>
+                        <button onclick="sendDataClearWall();"class="box">clear wall</button>
+                        <button onclick="sendDataSaveWall();"class="box">save wall</button>
+                        <button onclick="sendDataWallTargetUp();"class="box">wall target up</button>
+                        <button onclick="sendDataWallTargetDown();"class="box">wall target down</button>
+
+			others
+                        <button onclick="sendDataConnectWifi();"class="box">connect wifi</button>
+                        <button onclick="sendDataConnectLTE();"class="box">connect LTE</button>
+                        <button onclick="sendDataCameraUp();"class="box">camera up</button>
+                        <button onclick="sendDataCameraDown();"class="box">camera down</button>
+
+			</p>
+
+			<p>
+                        <audio id="remote-audio" autoplay controls style="height:40px;"></audio>
+			</p>
+                </div>
+                <div class="left">
+                        <div class="center">
+                                <video id="main_monitor" autoplay style="height:40%;width:90%;border: 3px solid gray;"></video>
+                        </div>
+
+                        <p>
+                        </p>
+
+                        <div class="center">
+                                <video id="right_monitor" autoplay style="height:50%;width:40%;border: 3px solid gray;"></video>
+                        </div>
+
+
+                </div>
+                <div class="right">
+                        <div class="center">
+                                <textarea id="messages" disabled type="text" value="" style=width:90%;height:90%;font-size:20;background:black;color:#00ffff;></textarea>
+                        </div>
+                </div>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/@open-ayame/ayame-web-sdk@2020.2.1/dist/ayame.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/qs/6.7.0/qs.min.js"></script>
+      <script src="./main.js"></script>
+      <script type="text/javascript">
+
+	//if x > x1 y = ax + b
+	//if x < -x1 y = ax - b
+	//if x >= -x1 && x <= x1 y = 0
+	
+	// robot, wp
+	MODE = "robot"
+
+	class Remapper {
+	      constructor (x1, x2, y1, y2) {
+	      	this.a = (y2 - y1) / (x2 - x1);
+	        this.b = y2 - this.a * x2;
+		this.x1 = x1;
+	      }
+	      
+	      remap(val) {
+		var y;
+		console.log("x1:",this.x1);
+		if (val > this.x1) y = this.a * val + this.b; 
+		else if (val < - this.x1) y = this.a * val - this.b;
+		else y = 0;
+		console.log("vel:",y);
+	      	return y;
+	      }
+	}
+
+	let MIN_INPUT = 0.2;
+	let MAX_INPUT = 1.0;
+	let MAX_Speed = 0.5;
+	let MIN_Speed = 0.0;
+
+	last_axis_status_6 = -1;	
+
+	var pad2vel = new Remapper(MIN_INPUT,MAX_INPUT,MIN_Speed,MAX_Speed);
+
+        let SPEED_LEVEL = 2;
+        const options = Ayame.defaultOptions;
+        options.clientId = clientId ? clientId : options.clientId;
+        if (signalingKey) {
+          options.signalingKey = signalingKey;
+        }
+        options.video.direction = 'recvonly';
+        let conn0,conn1,conn2,conn3,conn4,conn5,conn6;
+
+        const disconnectVoice = () => {
+          if (conn0) {
+            conn0.disconnect();
+            conn0 = null;
+          }
+        }
+
+        const startConnVoice = async () => {
+          if (conn0!=1) {
+                  conn0 = Ayame.connection(signalingUrl, roomId+"-0", options, true); // voice
+
+                  const mediaStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false})
+
+                  conn0.on('open', async (e) => {
+                  });
+
+                  conn0.on('disconnect', (e) => console.log(e));
+                  conn0.on('addstream', (e) => {
+                    document.querySelector('#remote-audio').srcObject = e.stream;
+                  });
+                await conn0.connect(mediaStream);
+          }
+        }
+
+        const disconnect = () => {
+
+          disconnectVoice();
+
+          if (conn1) {
+            conn1.disconnect();
+          }
+          if (conn2) {
+            conn1.disconnect();
+          }
+          if (conn3) {
+            conn1.disconnect();
+          }
+        }
+        let dataChannel1 = null; // A1
+
+        const label = 'dataChannel';
+        const startConn = async () => {
+          options.video.codec = videoCodec;
+          conn1 = Ayame.connection(signalingUrl, roomId+"-1", options, true); // A1_controll
+          conn2 = Ayame.connection(signalingUrl, roomId+"-2", options, true); // main_monitor
+          conn3 = Ayame.connection(signalingUrl, roomId+"-3", options, true); // _monitor
+          conn8 = Ayame.connection(signalingUrl, roomId+"-8", options, true); // right_monitor
+          conn9 = Ayame.connection(signalingUrl, roomId+"-9", options, true); // left_monitor
+
+          //A1
+          conn1.on('open', async (e) => {
+            console.log(dataChannel1);
+            dataChannel1 = await conn1.createDataChannel(label);
+	    dataChannel1.onmessage = onMessage1;
+          });
+          conn1.on('datachannel', (channel) => {
+            if (!dataChannel1) {
+              dataChannel1 = channel;
+              dataChannel1.onmessage = onMessage1;
+            }
+          });
+          conn1.on('disconnect', (e) => console.log(e));
+          await conn1.connect(null);
+          await delay(1000);
+
+          startConnVoice();
+          await delay(1000);
+
+          //main_monitor
+          conn2.on('open', ({authzMetadata}) => console.log(authzMetadata));
+          conn2.on('disconnect', (e) => console.log(e));
+          conn2.on('addstream', (e) => {
+            document.querySelector('#main_monitor').srcObject = e.stream;
+          });
+          await conn2.connect(null);
+          await delay(1000);
+
+          //back_monitor
+          conn3.on('open', ({authzMetadata}) => console.log(authzMetadata));
+          conn3.on('disconnect', (e) => console.log(e));
+          conn3.on('addstream', (e) => {
+            document.querySelector('#back_monitor').srcObject = e.stream;
+          });
+          await conn3.connect(null);
+          await delay(1000);
+
+          //right_monitor
+          conn8.on('open', ({authzMetadata}) => console.log(authzMetadata));
+          conn8.on('disconnect', (e) => console.log(e));
+          conn8.on('addstream', (e) => {
+            document.querySelector('#right_monitor').srcObject = e.stream;
+          });
+          await conn8.connect(null);
+          await delay(1000);
+
+          //left_monitor
+          conn9.on('open', ({authzMetadata}) => console.log(authzMetadata));
+          conn9.on('disconnect', (e) => console.log(e));
+          conn9.on('addstream', (e) => {
+            document.querySelector('#left_monitor').srcObject = e.stream;
+          });
+          await conn9.connect(null);
+          await delay(1000);
+
+          //ptz_monitor
+	
+          //conn10.on('open', ({authzMetadata}) => console.log(authzMetadata));
+          //conn10.on('disconnect', (e) => console.log(e));
+          //conn10.on('addstream', (e) => {
+          //  document.querySelector('#ptz_monitor').srcObject = e.stream;
+          //});
+          //await conn10.connect(null);
+          //await delay(1000);
+
+
+          startfnc();
+
+	url = '../ptz_camera.html?roomId=' + roomId + '-10';
+	url2 = '../map_camera.html?roomId=' + roomId + '-12';
+	console.log(url);
+	console.log(url2);
+	var Win1 = window.open(url, 'subWindow', 'width=' + 600 + ',height=' + 400 + '');
+	var Win2 = window.open(url2, 'subWindow2', 'width=' + 600 + ',height=' + 400 + '');
+
+
+
+        };
+
+       const sendData = (data) => {
+          console.log(data);
+          console.log(dataChannel1);
+          if (dataChannel1 && dataChannel1.readyState === 'open') {
+            dataChannel1.send(JSON.stringify(data));
+	    dataChannel1.send('\n');
+          }
+        };
+
+       function sendDataSafetyOn () {
+		data = {
+			id: 'safety', 
+			data: 'on'
+		};
+		sendData(data);
+       };
+
+       function sendDataSafetyOff() {
+		data = {
+			id: 'safety', 
+			data: 'off'
+		};
+		sendData(data);
+       };
+
+       function sendDataModeAmcl () {
+		data = {
+			id: 'mode', 
+			data: 'amcl'
+		};
+		sendData(data);
+       };
+
+       function sendDataModeSlam () {
+		data = {
+			id: 'mode', 
+			data: 'slam'
+		};
+		sendData(data);
+       };
+
+       function sendDataSlamSaveMap () {
+		data = {
+			id: 'slam', 
+			data: 'save_map'
+		};
+		sendData(data);
+       };
+
+       function sendDataSaveWaypoints () {
+		data = {
+			id: 'nav', 
+			data: 'save_wp'
+		};
+		sendData(data);
+       };
+
+       function sendDataLoadWaypoints () {
+		data = {
+			id: 'nav', 
+			data: 'load_wp'
+		};
+		sendData(data);
+       };
+
+       function sendDataWallMode () {
+		data = {
+			id: 'nav', 
+			data: 'wall_mode'
+		};
+		sendData(data);
+	       	MODE = "wp";
+       };
+
+       function sendDataAddWall () {
+		data = {
+			id: 'nav', 
+			data: 'add_wall'
+		};
+		sendData(data);
+       };
+
+       function sendDataDelWall () {
+		data = {
+			id: 'nav', 
+			data: 'del_wall'
+		};
+		sendData(data);
+       };
+
+       function sendDataClearWall () {
+		data = {
+			id: 'nav', 
+			data: 'clear_wall'
+		};
+		sendData(data);
+       };
+
+       function sendDataSaveWall () {
+		data = {
+			id: 'nav', 
+			data: 'save_wall'
+		};
+		sendData(data);
+       };
+
+       function sendDataConnectWifi () {
+		data = {
+			id: 'network', 
+			data: 'connect_wifi'
+		};
+		sendData(data);
+       };
+
+       function sendDataConnectLTE () {
+		data = {
+			id: 'network', 
+			data: 'connect_LTE'
+		};
+		sendData(data);
+       };
+
+       function sendDataWallTargetUp () {
+		data = {
+			id: 'p', 
+			data: 'target_up'
+		};
+		sendData(data);
+       };
+
+       function sendDataWallTargetDown () {
+		data = {
+			id: 'p', 
+			data: 'target_down'
+		};
+		sendData(data);
+       };
+
+       function sendDataSwitchInitWp () {
+		data = {
+			id: 'init_pos',
+			data: 'init_pos'
+		};
+		sendData(data);
+	       	MODE = "wp";
+       };
+
+       function sendDataInitPosSet () {
+		data = {
+			id: 'init_pos',
+			data: 'init_pos'
+		};
+		sendData(data);
+	       	MODE = "wp";
+       };
+
+
+       function sendDataAddWp () {
+		data = {
+			id: 'p',
+			data: 'add'
+		};
+		sendData(data);
+       };
+
+       function sendDataDeleteWp () {
+		data = {
+			id: 'p', 
+			data: 'del'
+		};
+		sendData(data);
+       };
+
+
+       function sendDataClearWp () {
+		data = {
+			id: 'p', 
+			data: 'clear'
+		};
+		sendData(data);
+       };
+
+       function sendDataResetWpPos () {
+		data = {
+			id: 'p', 
+			data: 'reset'
+		};
+		sendData(data);
+       };
+
+       function sendDataTargetWpUp () {
+		data = {
+			id: 'p', 
+			data: 'target_up'
+		};
+		sendData(data);
+       };
+
+       function sendDataTargetWpDown () {
+		data = {
+			id: 'p', 
+			data: 'target_down'
+		};
+		sendData(data);
+       };
+
+       function sendDataWpMode () {
+		data = {
+			id: 'p', 
+			data: 'wp'
+		};
+		sendData(data);
+		data = {
+			id: 'cam', 
+			data: 'wp'
+		};
+		sendData(data);
+	       	MODE = "wp"
+       };
+
+       function sendDataA1Mode () {
+		data = {
+			id: 'cam', 
+			data: 'robot'
+		};
+		sendData(data);
+	       	MODE = "robot"
+       };
+
+       function sendDataNavStart () {
+		data = {
+			id: 'n', 
+			data: 'start'
+		};
+		sendData(data);
+       };
+
+       function sendDataNavStartLoop () {
+		data = {
+			id: 'n', 
+			data: 'start_loop'
+		};
+		sendData(data);
+       };
+
+       function sendDataNavStop () {
+		data = {
+			id: 'n', 
+			data: 'stop'
+		};
+		sendData(data);
+       };
+
+       function sendDataCameraUp () {
+		data = {
+			id: 'cam', 
+			data: 'up'
+		};
+		sendData(data);
+       };
+
+       function sendDataCameraDown () {
+		data = {
+			id: 'cam', 
+			data: 'down'
+		};
+		sendData(data);
+       };
+
+	// id
+	// 1. velocity(vx, vy, vr)
+	// 2. slam 1: open, 2: clear map, 3: save map
+	// 3. navigation 1: open, 3: set start number, 4: start navigation, 5: stop navigation
+	// 4. set initial pos 1: open, 2: velocity(vx, vy, vr)
+	// 5. waypoint editor 1: open, 2: add, 3: del, 4: select(up), 5: select(down), 6: velocity(vx, vy, vth), 7: all clear
+
+        //keyボード入力でA1を操作
+        window.addEventListener('keydown', function(event) {
+
+		mode = 'v';
+		if (MODE == "wp"){
+			mode = 'w';
+		}
+
+
+		if (MODE == "robot")
+		{	
+			console.log(event.keyCode);
+			//e 69  d 68  f 70  s 83  j 74  l 76
+			//0 48
+			if (event.keyCode == 71){
+				const data = {
+						id: 'test',
+						data: [5, 1.3]
+					     };
+				sendData(data);
+			}
+			// e
+			if (event.keyCode == 69){
+				const data = {
+						id: mode, 
+						data: [SPEED_LEVEL/10, 0.0, 0.0]
+					     };
+				sendData(data);
+				console.log("forward");
+				console.log(data);
+
+
+			}
+			// s
+			if (event.keyCode == 83){
+				const data = {
+						id: mode, 
+						data: [0.0, SPEED_LEVEL/10, 0.0]
+					     };
+				sendData(data);
+				console.log("left");
+			}
+			// d
+			if (event.keyCode == 68){
+				const data = {
+						id: mode, 
+						data: [-SPEED_LEVEL/10, 0.0, 0.0]
+					     };
+				sendData(data);
+				console.log("back");
+			}
+			// f
+			if (event.keyCode == 70){
+				const data = {
+						id: mode,
+						data: [0.0, -SPEED_LEVEL/10, 0.0]
+					     };
+				sendData(data);
+				console.log("right");
+			}
+			// j
+			if (event.keyCode == 74){
+				const data = {
+						id: mode,
+						data: [0.0, 0.0, -SPEED_LEVEL/10]
+					     };
+				sendData(data);
+				console.log("rotate left");
+			}
+			// l
+			if (event.keyCode == 76){
+				const data = {
+						id: mode,
+						data: [0.0, 0.0, SPEED_LEVEL/10]
+					     };
+				sendData(data);
+				console.log("rotate right");
+			}
+		}
+
+		if (mode == "w")
+		{	
+			speed = 1
+			console.log(event.keyCode);
+			//e 69  d 68  f 70  s 83  j 74  l 76
+			//0 48
+			if (event.keyCode == 71){
+				const data = {
+						id: 'test',
+						data: [5, 1.3]
+					     };
+				sendData(data);
+			}
+			// e
+			if (event.keyCode == 69){
+				const data = {
+						id: mode, 
+						data: [-speed, 0.0, 0.0]
+					     };
+				sendData(data);
+				console.log("forward");
+			}
+			// s
+			if (event.keyCode == 83){
+				const data = {
+						id: mode, 
+						data: [0.0, -speed, 0.0]
+					     };
+				sendData(data);
+				console.log("left");
+			}
+			// d
+			if (event.keyCode == 68){
+				const data = {
+						id: mode, 
+						data: [speed, 0.0, 0.0]
+					     };
+				sendData(data);
+				console.log("back");
+			}
+			// f
+			if (event.keyCode == 70){
+				const data = {
+						id: mode,
+						data: [0.0, speed, 0.0]
+					     };
+				sendData(data);
+				console.log("right");
+			}
+			// j
+			if (event.keyCode == 74){
+				const data = {
+						id: mode,
+						data: [0.0, 0.0, speed]
+					     };
+				sendData(data);
+				console.log("rotate left");
+			}
+			// l
+			if (event.keyCode == 76){
+				const data = {
+						id: mode,
+						data: [0.0, 0.0, -speed]
+					     };
+				sendData(data);
+				console.log("rotate right");
+			}
+		}
+
+
+
+		// i
+                if (event.keyCode == 73){
+			const data = {
+					id: 'r',
+					data: [0.0, -SPEED_LEVEL/10, 0.0] 
+				     };
+                        sendData(data);
+                        console.log("face up");
+                }
+		// k
+                if (event.keyCode == 75){
+			const data = {
+					id: 'r',
+					data: [0.0, SPEED_LEVEL/10, 0.0] 
+				     };
+                        sendData(data);
+                        console.log("face down");
+                }
+		// n
+                if (event.keyCode == 78){
+			const data = {
+					id: 'r',
+					data: [0.0, 0.0, -SPEED_LEVEL/10]
+				     };
+                        sendData(data);
+                        console.log("body down");
+                }
+
+                //space 32 上矢印 38 下矢印 40 左矢印 37 右矢印 39
+
+		// space
+                if (event.keyCode == 32){
+			const data = {
+					id: 'ptz', 
+					data: 'init_pos'
+				     };
+                        sendData(data);
+                        console.log("ptz init");
+                }
+		// up
+                if (event.keyCode == 38){
+			const data = {
+					id: 'ptz', 
+					data: 'up'
+				     };
+                        sendData(data);
+                        console.log("ptz up");
+                }
+		// down
+                if (event.keyCode == 40){
+			const data = {
+					id: 'ptz', 
+					data: 'down'
+				     };
+                        sendData(data);
+                        console.log("ptz down");
+                }
+		// left
+                if (event.keyCode == 37){
+			const data = {
+					id: 'ptz', 
+					data: 'left'
+				     };
+                        sendData(data);
+                        console.log("ptz left");
+                }
+		// right
+                if (event.keyCode == 39){
+			const data = {
+					id: 'ptz', 
+					data: 'right'
+				     };
+                        sendData(data);
+                        console.log("ptz right");
+                }
+		// PgUp or z 
+                if (event.keyCode == 33 || event.keyCode == 90){
+			const data = {
+					id: 'ptz', 
+					data: 'zoom_up'
+				     };
+                        sendData(data);
+                        console.log("ptz zoom in");
+                }
+		// PgDn or x
+                if (event.keyCode == 34 || event.keyCode == 88){
+			const data = {
+					id: 'ptz', 
+					data: 'zoom_down'
+				     };
+                        sendData(data);
+                        console.log("ptz zoom out");
+                }
+
+		// focus right 
+                if (event.keyCode == 86){
+			const data = {
+					id: 'ptz', 
+					data: 'focus_right'
+				     };
+                        sendData(data);
+                        console.log("focus right");
+                }
+
+		// focus left 
+                if (event.keyCode == 67){
+			const data = {
+					id: 'ptz', 
+					data: 'focus_left'
+				     };
+                        sendData(data);
+                        console.log("focus left");
+                }
+
+
+
+                //speed change
+                //0: 48 1:49 ... 9:57
+                //0: 48 1:49 ... 5:53
+
+                if (event.keyCode > 47 && event.keyCode < 54){
+			const data = {
+					id: 's',
+					data: [event.keyCode - 48]
+				     };
+			sendData(data);
+
+                        SPEED_LEVEL = event.keyCode - 48;
+                        console.log("change speed");
+                        console.log("Speed Level:",event.keyCode - 48);
+                }
+        });
+
+        function onChangeAutoMotion() {
+          autoMotion = document.getElementById("auto-motion").value;
+          if (autoMotion == 'none') {
+            autoMotion = null;
+          }
+        }
+
+	var gamepadAPI = {
+	      controller: {}, 
+	      turbo: false,
+	      connect: function() {}, 
+	      disconnect: function() {},
+	      update: function() {}, 
+	      buttonPressed: function() {},
+	      buttons: [],
+	      buttonsCache: [], 
+	      buttonsStatus: [], 
+	      axesStatus: []
+	};
+	
+	gamepadAPI.buttons = [
+	      'trig', 'b2', 'b3', 'b4', 'b5', 'b6', 
+	      'b7', 'b8', 'b9', 'b10', 'b11', 'b12'
+	]; 
+
+	gamepadAPI.connect = () => {
+	  gamepadAPI.controller = navigator.getGamepads()[0];	
+	  gamepadAPI.turbo = true;
+	  console.log("Gamepad connected at index " + 
+		      gamepadAPI.controller.index + ": " + 
+		      gamepadAPI.controller.id + ". It has " + 
+		      gamepadAPI.controller.buttons.length + " buttons and " + 
+		      gamepadAPI.controller.axes.length + " axes.");
+	};
+	
+	gamepadAPI.disconnect = () => {
+	  gamepadAPI.turbo = false;
+	  delete gamepadAPI.controller;
+	  console.log("Gamepad disconnected.");
+	};
+	
+	window.addEventListener("gamepadconnected", gamepadAPI.connect);
+
+	window.addEventListener("gamepaddisconnected", gamepadAPI.disconnect);
+
+	gamepadAPI.update = () => {
+
+	        gamepadAPI.buttonsCache = [];
+		
+	        // save previous status
+	        for(var k=0; k<gamepadAPI.buttonsStatus.length; ++k) {
+	          gamepadAPI.buttonsCache[k] = gamepadAPI.buttonsStatus[k];
+	        }
+
+	        gamepadAPI.buttonsStatus = [];
+
+	      	var pads = navigator.getGamepads ? navigator.getGamepads() :
+	      			(navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
+	        var gp = pads[0];
+	        if (!gp) return;
+
+	        var pressed = [];
+		
+	        if(gp.buttons) {
+	          for(var i=0; i<gp.buttons.length; ++i){
+	            if(gp.buttons[i].pressed) {
+	              pressed.push(gamepadAPI.buttons[i]);
+		    }
+	          }
+	        }
+	        
+	        var axes = [];
+	        if(gp.axes) {
+	          for(var i=0; i<gp.axes.length; ++i){
+			axes.push(+(gp.axes[i].toFixed(1)));
+	          }
+	        }
+	        
+	        gamepadAPI.axesStatus = axes;
+	        gamepadAPI.buttonsStatus = pressed;
+
+	        return pressed;
+	};
+
+	gamepadAPI.buttonPressed = (button, hold) => {
+	    var newPress = false;
+	    
+	    for(var i=0; i<gamepadAPI.buttonsStatus.length; ++i) {
+	        if(gamepadAPI.buttonsStatus[i] == button) {
+	      	  newPress = true;
+	          if(!hold) {
+	            for(var j=0; j<gamepadAPI.buttonsCache.length; ++j) {
+	              if (gamepadAPI.buttonsCache[j] == button) {
+	                newPress = false;
+	      	      }
+	      	    }
+	          }
+	        }
+	      }
+	    return newPress;
+	};
+
+	
+	setInterval(function(){
+	  gamepadAPI.update();
+	  if(gamepadAPI.turbo) {
+
+	        // trig: add waypoint
+	        if (gamepadAPI.buttonPressed('trig')) {
+	      		const data = {
+					id: 'p',
+	      				data: 'add'
+	      			     };
+	      		sendData(data);
+	      	}
+		// key 2: reset waypoint
+		if (gamepadAPI.buttonPressed('b2')) {
+			const data = {
+					id: 'p', 
+					data: 'reset'
+				     };
+			sendData(data);
+		}
+
+		// key 5: delete waypoint
+		if (gamepadAPI.buttonPressed('b5')) {
+			data = {
+				id: 'p', 
+				data: 'del'
+	          	};
+			sendData(data);
+		}
+
+		// key 6: clear waypoint
+		if (gamepadAPI.buttonPressed('b6')) {
+			data = {
+				id: 'p', 
+				data: 'clear'
+	          	};
+			sendData(data);
+		}
+
+
+
+		if (gamepadAPI.buttonPressed('b4')) {
+			data = {
+				id: 'p', 
+				data: 'target_up'
+	          	};
+			sendData(data);
+		}
+
+	        if (gamepadAPI.buttonPressed('b3')) {
+	      		const data = {
+					id: 'p',
+	      				data: 'target_down'
+	      			     };
+	      		sendData(data);
+	      	}
+
+
+		// key 9: start loop nav
+		if (gamepadAPI.buttonPressed('b9')) {
+			const data = {
+					id: 'n',
+					data: 'start_loop'
+			};
+	      		sendData(data);
+		}
+
+		// key 11: start nav
+		if (gamepadAPI.buttonPressed('b11')) {
+			const data = {
+					id: 'n',
+					data: 'start'
+			};
+	      		sendData(data);
+		}
+		// key 12: stop nav
+		if (gamepadAPI.buttonPressed('b12')) {
+			const data = {
+					id: 'n',
+					data: 'stop'
+			};
+	      		sendData(data);
+		}
+
+		// key 7: camera down 
+		if (gamepadAPI.buttonPressed('b7')) {
+			const data = {
+					id: 'cam',
+					data: 'down'
+			};
+	      		sendData(data);
+		}
+
+		// key 8: camera up 
+		if (gamepadAPI.buttonPressed('b8')) {
+			const data = {
+					id: 'cam',
+					data: 'up'
+			};
+	      		sendData(data);
+		}
+
+		// key 10: swtich init pos setting mode 
+		if (gamepadAPI.buttonPressed('b10')) {
+			const data = {
+					id: 'init_pos',
+					data: 'init_pos'
+			};
+	      		sendData(data);
+		}
+
+
+	        // A1 vel(x, y, th)
+	        if (MODE == "robot") {
+	          if (Math.abs(gamepadAPI.axesStatus[0]) > MIN_INPUT || 
+		      Math.abs(gamepadAPI.axesStatus[1]) > MIN_INPUT ||
+		      Math.abs(gamepadAPI.axesStatus[5]) > MIN_INPUT) { 
+	      	  	data = {
+	      			id: 'v',
+	      			data: [pad2vel.remap(-gamepadAPI.axesStatus[1]), pad2vel.remap(-gamepadAPI.axesStatus[0]), pad2vel.remap(gamepadAPI.axesStatus[5])]
+	      	  	};
+
+	      	  	sendData(data);
+		  }
+	        }
+
+	        // WP vel(x, y, th)
+	        if (MODE == "wp") {
+		  if (Math.abs(gamepadAPI.axesStatus[0]) > MIN_INPUT ||
+		      Math.abs(gamepadAPI.axesStatus[1]) > MIN_INPUT ||
+		      Math.abs(gamepadAPI.axesStatus[5]) > MIN_INPUT) {
+
+			var sp = 3;
+			data = {
+				id: 'w', 
+				data: [pad2vel.remap(gamepadAPI.axesStatus[1]) * sp, pad2vel.remap(gamepadAPI.axesStatus[0]) * sp, pad2vel.remap(gamepadAPI.axesStatus[5]) * sp]
+	          	};
+	      	  	sendData(data);
+		  }
+	        }
+
+		// ptz move
+		if (gamepadAPI.axesStatus[9] == -1) {
+			data = {
+				id: 'ptz', 
+				data: 'up'
+	          	};
+			sendData(data);
+		}
+		if (gamepadAPI.axesStatus[9] === (-1+2*2/7).toFixed(1)) {
+			data = {
+				id: 'ptz', 
+				data: 'down'
+	          	};
+			sendData(data);
+		}
+		if (gamepadAPI.axesStatus[9] === (-1+4*2/7).toFixed(1)) {
+			data = {
+				id: 'ptz', 
+				data: 'left'
+	          	};
+			sendData(data);
+		}
+		if (gamepadAPI.axesStatus[9] === (-1+6*2/7).toFixed(1)) {
+			data = {
+				id: 'ptz', 
+				data: 'right'
+	          	};
+			sendData(data);
+		}
+
+	  }}, 100);
+          
+
+        const Debug = () => {
+          console.log("*** debug ***");
+          console.log("A1:"+dataChannel1);
+        };
+
+        document.querySelector("#roomIdInput").value = roomId;
+
+	var A1_Status = null;
+
+        let autoMotion = null;
+
+        function hyoji()
+        {
+                L0 = "\n*** A1 Status ***\n";
+
+                if (conn0)voice = 1;
+                else voice = 0;
+		
+                L1 = "voice:" + voice + "\n";
+
+                if (dataChannel1)A1_Control = 1;
+                else A1_Control = 0;
+                L2 = "control:" + A1_Control + "\n";
+
+                L3 = "Speed Level:" + SPEED_LEVEL + "\n";
+
+                L4 = "auto motion:" + autoMotion + "\n";
+		
+		L5 = A1_Status + "\n";
+
+                if (autoMotion == "rotate_r")
+                {
+	      		data = {
+	      			id: 'v',
+	      			data: [0.0, 0.0, SPEED_LEVEL/10] 
+	      	     	       };
+	      		sendData(data);
+                        console.log("rotate right");
+                }
+
+                if (autoMotion == "rotate_l")
+                {
+	      		data = {
+	      			id: 'v',
+	      			data: [0.0, 0.0, -SPEED_LEVEL/10] 
+	      	     	       };
+	      		sendData(data);
+                        console.log("rotate l");
+                }
+
+                document.querySelector("#messages").value = L0 + L1 + L2 + L3 + L4 + L5;        
+	}
+
+	let face_up = 0;
+	let count = 0;
+        function interval2()
+	{
+		if (autoMotion == "up_down")
+		{
+			if (count < 6)
+	      		{
+				if (face_up == 0)
+				{
+	      				data = {
+	      					id: 'r',
+	      					data: [0.0, -0.5, 0.0] 
+	      	     	       		};
+	      				sendData(data);
+					face_up = 1;
+				}
+				else
+				{
+	      				data = {
+	      					id: 'r',
+	      					data: [0.0, 0.5, 0.0] 
+	      	     	       		};
+	      				sendData(data);
+					face_up = 0;
+				}
+				count = count + 1;
+	      		}
+	      		else 
+	      		{
+	      			data = {
+	      				id: 'v',
+	      				data: [0.0, 0.0, SPEED_LEVEL/10] 
+	      	     	       	};
+	      			sendData(data);
+				count = 0;
+	      		}
+		}
+
+	}
+
+        function startfnc()
+        {
+                setInterval("hyoji()",300);
+                setInterval("interval2()",3000);
+        }
+
+        function onMessage1(e) {
+	        console.log("onmessage1:",e.data)
+                const moji = String.fromCharCode.apply(null, new Uint8Array(e.data))
+	        console.log("moji:",e.data)
+                A1_Status = moji;
+
+	      	const recv_data = JSON.parse(e.data);
+	        console.log("****** recv data ******")
+
+	        console.log("** navigation info **")
+	        console.log("mode:",recv_data.mode)
+	        console.log("safety:",recv_data.safety)
+	        console.log("map_save_time:",recv_data.map_save_time)
+
+	        console.log("** network info **")
+	        console.log("ssid:",recv_data.ssid)
+	        console.log("level:",recv_data.level)
+	        console.log("focus:",recv_data.focus)
+	        console.log("zoom:",recv_data.zoom)
+	        console.log("mac:",recv_data.mac)
+	        console.log("device:",recv_data.device)
+	        console.log("speed:",recv_data.speed)
+        }
+
+        function onChangeAutoMotion() {
+          autoMotion = document.getElementById("auto-motion").value;
+          if (autoMotion == 'none') {
+            autoMotion = null;
+          }
+        }
+
+        const roomIdInput = document.getElementById("roomIdInput");
+        roomIdInput.addEventListener('change', (event) => {
+          console.log(event);
+          roomId = event.target.value;
+        });
+
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        </script>
+  </body>
+</html>a
