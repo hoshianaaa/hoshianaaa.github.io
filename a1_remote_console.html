@@ -86,6 +86,8 @@
                         <button onclick="sendDataConnectLTE();"class="box">connect LTE</button>
                         <button onclick="sendDataCameraUp();"class="box">camera up</button>
                         <button onclick="sendDataCameraDown();"class="box">camera down</button>
+			<button onclick="sendDataBirdViewStart();"class="box">bird_view start</button>
+                        <button onclick="sendDataBirdViewStop();"class="box">bird_view stop</button>
 
 			</p>
 
@@ -557,6 +559,24 @@
 		};
 		sendData(data);
        };
+
+        function sendDataBirdViewStart () {
+                const data = {
+                                id: 'bird_view',
+                                data: 'start'
+                };
+                sendData(data);
+                console.log("bird_view start");
+        };
+
+        function sendDataBirdViewStop () {
+                const data = {
+                                id: 'bird_view',
+                                data: 'stop'
+                };
+                sendData(data);
+                console.log("bird_view stop");
+        };
 
 	// id
 	// 1. velocity(vx, vy, vr)
