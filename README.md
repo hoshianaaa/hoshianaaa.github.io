@@ -1,5 +1,7 @@
 # Ayame Web SDK サンプル
 
+https://hoshianaaa.github.io/a1_remote_console.html?roomId=Hachi&signalingKey=GrEh4Woqsm3d9G3Fd_eO3DBKd_SuWZheutMzdvrK3P00qzLB
+
 [OpenAyame/ayame-web-sdk](https://github.com/OpenAyame/ayame-web-sdk) のサンプル集です。
 
 ## 時雨堂のオープンソースソフトウェアについて
